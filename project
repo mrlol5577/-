@@ -1,0 +1,135 @@
+from pygame import *
+import random
+import sys
+from pygame import image
+
+win_width = 700
+win_height = 500
+
+RED = (255, 0, 0)
+
+font.init()
+text = font.Font(None, 40)
+text1 = font.Font(None, 80)
+mnst = 5
+time_left = 30  # Додаємо таймер на 30 секунд
+
+win = text1.render('Ви перемогли', True, (0, 255, 0))
+lose = text1.render('Ви програли', True, (255, 0, 0))
+
+display.set_caption("доганялкі")
+window = display.set_mode((win_width, win_height))
+background = transform.scale(image.load("background.png"), (win_width, win_height))
+
+class GameSprite(sprite.Sprite):
+    def __init__(self, player_image, player_x, player_y, size_x, size_y, player_speed):
+        sprite.Sprite.__init__(self)
+        self.image = transform.scale(image.load(player_image), (size_x, size_y))
+        self.speed = player_speed
+        self.rect = self.image.get_rect()
+        self.rect.x = player_x
+        self.rect.y = player_y
+
+    def draw(self):
+        window.blit(self.image, (self.rect.x, self.rect.y))
+
+class Player(GameSprite):
+    def __init__(self, player_image, player_x, player_y, size_x, size_y, speed):
+        super().__init__(player_image, player_x, player_y, size_x, size_y, speed)
+        self.last_time_fire = 0
+
+    def move(self):
+        keys_pressed = key.get_pressed()
+
+        if keys_pressed[K_LEFT] and self.rect.x > -10:
+            self.rect.x -= self.speed
+        if keys_pressed[K_RIGHT] and self.rect.x < 620:
+            self.rect.x += self.speed
+        if keys_pressed[K_UP] and self.rect.y > -20:
+            self.rect.y -= self.speed
+        if keys_pressed[K_DOWN] and self.rect.y < 420:
+            self.rect.y += self.speed
+
+monster_image = image.load("monster.png")
+scaled_monster_image = transform.scale(monster_image, (60, 60))
+
+class Monster:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.speed = 10
+
+    def move(self):
+        direction = random.choice(['up', 'down', 'left', 'right'])
+        if direction == 'up':
+            self.y -= self.speed
+        elif direction == 'down':
+            self.y += self.speed
+        elif direction == 'left':
+            self.x -= self.speed
+        elif direction == 'right':
+            self.x += self.speed
+        if self.x > 10:
+            self.x -= self.speed
+        if self.x < 620:
+            self.x += self.speed
+        if self.y > -5:
+            self.y -= self.speed
+        if self.y < 420:
+            self.y += self.speed
+
+    def draw(self, screen):
+        screen.blit(scaled_monster_image, (self.x, self.y))
+
+hh = Player("hh.png", 20, 400, 100, 100, 3)
+monsters = [Monster(random.randint(150, win_width), random.randint(0, win_height)) for _ in range(5)]
+
+text_x = 10
+text_y = 10
+
+clock = time.Clock()  # Створюємо об'єкт Clock для контролю часу
+start_ticks = time.get_ticks()  # Отримуємо початковий час
+
+run = True
+finish = False
+
+while run:
+    window.blit(background, (0, 0))
+    for e in event.get():
+        if e.type == QUIT:
+            run = False
+
+    if not finish:
+        hh.move()
+        hh.draw()
+
+        for monster in monsters.copy():
+            monster.move()
+            monster.draw(window)
+            if hh.rect.colliderect(monster.x, monster.y, scaled_monster_image.get_width(), scaled_monster_image.get_height()):
+                mnst -= 1
+                monsters.remove(monster)
+
+        if mnst == 0:
+            finish = True
+
+        # Визначаємо залишок часу
+        seconds = (time.get_ticks() - start_ticks) // 1000
+        time_left = 7 - seconds
+
+    if time_left <= 0:
+        finish = True
+        window.blit(lose, (200, 200))
+
+    timer_surface = text.render(f"Залишилось часу: {time_left}", True, RED)
+    window.blit(timer_surface, (win_width - 300, text_y))  # Зміщено лівіше
+
+    text_surface = text.render(f"Залишилось зловити: {mnst}", True, RED)
+    text_rect = text_surface.get_rect(topleft=(text_x, text_y))
+    window.blit(text_surface, text_rect)
+
+    if mnst == 0:
+        window.blit(win, (200, 200))
+
+    display.update()
+    clock.tick(60)  # Контролюємо оновлення екрану з частотою 60 кадрів на секунду
